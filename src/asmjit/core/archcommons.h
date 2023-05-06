@@ -17,6 +17,41 @@ ASMJIT_BEGIN_SUB_NAMESPACE(arm)
 //! \addtogroup asmjit_arm
 //! \{
 
+//! Data type that can be encoded with the instruction (AArch32 only).
+enum class DataType : uint32_t {
+  //! No data type specified (default for all general purpose instructions).
+  kNone = 0,
+  //! 8-bit signed integer, specified as `.s8` in assembly.
+  kS8 = 1,
+  //! 16-bit signed integer, specified as `.s16` in assembly.
+  kS16 = 2,
+  //! 32-bit signed integer, specified as `.s32` in assembly.
+  kS32 = 3,
+  //! 64-bit signed integer, specified as `.s64` in assembly.
+  kS64 = 4,
+  //! 8-bit unsigned integer, specified as `.u8` in assembly.
+  kU8 = 5,
+  //! 16-bit unsigned integer, specified as `.u16` in assembly.
+  kU16 = 6,
+  //! 32-bit unsigned integer, specified as `.u32` in assembly.
+  kU32 = 7,
+  //! 64-bit unsigned integer, specified as `.u64` in assembly.
+  kU64 = 8,
+  //! 16-bit floating point (half precision), specified as `.f16` in assembly.
+  kF16 = 10,
+  //! 32-bit floating point (single precision), specified as `.f32` in assembly.
+  kF32 = 11,
+  //! 64-bit floating point (double precision), specified as `.f64` in assembly.
+  kF64 = 12,
+  //! 8-bit polynomial.
+  kP8 = 13,
+  //! 64-bit polynomial.
+  kP64 = 15,
+
+  //! Maximum value of `DataType`.
+  kMaxValue = 15
+};
+
 //! Condition code (both AArch32 & AArch64).
 //!
 //! \note This enumeration doesn't match condition code that is used in AArch32/AArch64 opcodes. In general this
@@ -74,41 +109,6 @@ enum class CondCode : uint8_t {
 
 //! Negates a condition code.
 static inline constexpr CondCode negateCond(CondCode cond) noexcept { return CondCode(uint8_t(cond) ^ uint8_t(1)); }
-
-//! Data type that can be encoded with the instruction (AArch32 only).
-enum class DataType : uint32_t {
-  //! No data type specified (default for all general purpose instructions).
-  kNone = 0,
-  //! 8-bit signed integer, specified as `.s8` in assembly.
-  kS8 = 1,
-  //! 16-bit signed integer, specified as `.s16` in assembly.
-  kS16 = 2,
-  //! 32-bit signed integer, specified as `.s32` in assembly.
-  kS32 = 3,
-  //! 64-bit signed integer, specified as `.s64` in assembly.
-  kS64 = 4,
-  //! 8-bit unsigned integer, specified as `.u8` in assembly.
-  kU8 = 5,
-  //! 16-bit unsigned integer, specified as `.u16` in assembly.
-  kU16 = 6,
-  //! 32-bit unsigned integer, specified as `.u32` in assembly.
-  kU32 = 7,
-  //! 64-bit unsigned integer, specified as `.u64` in assembly.
-  kU64 = 8,
-  //! 16-bit floating point (half precision), specified as `.f16` in assembly.
-  kF16 = 10,
-  //! 32-bit floating point (single precision), specified as `.f32` in assembly.
-  kF32 = 11,
-  //! 64-bit floating point (double precision), specified as `.f64` in assembly.
-  kF64 = 12,
-  //! 8-bit polynomial.
-  kP8 = 13,
-  //! 64-bit polynomial.
-  kP64 = 15,
-
-  //! Maximum value of `DataType`.
-  kMaxValue = 15
-};
 
 //! Shift operation predicate (ARM) describes either SHIFT or EXTEND operation.
 //!

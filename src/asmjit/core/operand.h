@@ -47,7 +47,7 @@ enum class RegType : uint8_t {
   //! No register - unused, invalid, multiple meanings.
   kNone = 0,
 
-  //! This is not a register type. This value is reserved for a \ref Label that used in \ref BaseMem as a base.
+  //! This is not a register type. This value is reserved for a \ref Label used in \ref BaseMem as a base.
   //!
   //! Label tag is used as a sub-type, forming a unique signature across all operand types as 0x1 is never associated
   //! with any register type. This means that a memory operand's BASE register can be constructed from virtually any
@@ -217,6 +217,18 @@ ASMJIT_DEFINE_ENUM_COMPARE(RegGroup)
 
 typedef Support::EnumValues<RegGroup, RegGroup::kGp, RegGroup::kMaxVirt> RegGroupVirtValues;
 
+//! Label operation type.
+//!
+//! Operation type describes how a \ref Label should be used to calculate an instruction immediate value, typically
+//! used in places that require relocations.
+enum class LabelOp : uint32_t {
+  //! No operation specified, \ref Label encoding is determined by the instruction.
+  kNone = 0u,
+
+  //! Low 12 bits of the Label's absolute address are used as an immediate value (AArch64).
+  kAArch64_Lo12 = 1u
+};
+
 //! Operand signature is a 32-bit number describing \ref Operand and some of its payload.
 //!
 //! In AsmJit operand signature is used to store additional payload of register, memory, and immediate operands.
@@ -272,6 +284,11 @@ struct OperandSignature {
     // |........|XXXX....|........|........|
     kPredicateShift = 20,
     kPredicateMask = 0x0Fu << kPredicateShift,
+
+    // Predicate used by either registers or immediate values (4 bits).
+    // |....XXXX|........|........|........|
+    kLabelOpShift = 24,
+    kLabelOpMask = 0x0Fu << kLabelOpShift,
 
     // Operand size (8 most significant bits).
     // |XXXXXXXX|........|........|........|
@@ -382,6 +399,8 @@ struct OperandSignature {
   inline constexpr uint32_t predicate() const noexcept { return getField<kPredicateMask>(); }
   inline constexpr uint32_t size() const noexcept { return getField<kSizeMask>(); }
 
+  inline constexpr LabelOp labelOp() const noexcept { return LabelOp(getField<kLabelOpMask>()); }
+
   inline void setOpType(OperandType opType) noexcept { setField<kOpTypeMask>(uint32_t(opType)); }
   inline void setRegType(RegType regType) noexcept { setField<kRegTypeMask>(uint32_t(regType)); }
   inline void setRegGroup(RegGroup regGroup) noexcept { setField<kRegGroupMask>(uint32_t(regGroup)); }
@@ -391,6 +410,8 @@ struct OperandSignature {
 
   inline void setPredicate(uint32_t predicate) noexcept { setField<kPredicateMask>(predicate); }
   inline void setSize(uint32_t size) noexcept { setField<kSizeMask>(size); }
+
+  inline void setLabelOp(LabelOp op) noexcept { setField<kLabelOpMask>(uint32_t(op)); }
 
   //! \}
 
@@ -436,6 +457,10 @@ struct OperandSignature {
 
   static inline constexpr OperandSignature fromSize(uint32_t size) noexcept {
     return OperandSignature{size << kSizeShift};
+  }
+
+  static inline constexpr OperandSignature fromLabelOp(LabelOp labelOp) noexcept {
+    return OperandSignature{uint32_t(labelOp) << kLabelOpShift};
   }
 
   //! \}
@@ -763,9 +788,17 @@ public:
   inline constexpr Label(const Label& other) noexcept
     : Operand(other) {}
 
+  //! Creates a cloned label operand of `other`, but with \ref LabelOp set to `op`.
+  inline constexpr Label(const Label& other, LabelOp op) noexcept
+    : Operand(Globals::Init, Signature::fromOpType(OperandType::kLabel) | Signature::fromLabelOp(op), other.id(), 0, 0) {}
+
   //! Creates a label operand of the given `id`.
   inline constexpr explicit Label(uint32_t id) noexcept
     : Operand(Globals::Init, Signature::fromOpType(OperandType::kLabel), id, 0, 0) {}
+
+  //! Creates a label operand of the given `id`.
+  inline constexpr Label(uint32_t id, LabelOp op) noexcept
+    : Operand(Globals::Init, Signature::fromOpType(OperandType::kLabel) | Signature::fromLabelOp(op), id, 0, 0) {}
 
   inline explicit Label(Globals::NoInit_) noexcept
     : Operand(Globals::NoInit) {}
@@ -794,6 +827,16 @@ public:
   inline constexpr bool isValid() const noexcept { return _baseId != Globals::kInvalidId; }
   //! Sets the label `id`.
   inline void setId(uint32_t id) noexcept { _baseId = id; }
+
+  //! Returns \ref LabelOp associated with this label.
+  inline LabelOp op() const noexcept { return _signature.labelOp(); }
+  //! Tests whether the label has associated \ref LabelOp.
+  inline bool hasOp() const noexcept { return _signature.labelOp() != LabelOp::kNone; }
+  //! Sets \ref LabelOp to be associated with this label.
+  inline void setOp(LabelOp op) noexcept { _signature.setLabelOp(op); }
+
+  //! Returns a new \ref Label with associated \ref LabelOp::kAArch64_Lo12.
+  inline Label lo12() const noexcept { return Label(*this, LabelOp::kAArch64_Lo12); }
 
   //! \}
 };
@@ -1392,7 +1435,7 @@ public:
   //! \}
 };
 
-//! Type of the an immediate value.
+//! Type of an immediate value.
 enum class ImmType : uint32_t {
   //! Immediate is integer.
   kInt = 0,
